@@ -11,6 +11,8 @@ from torch import LongTensor, Tensor
 from ..distributions import MultivariateNormal
 from ..models import ApproximateGP, ExactGP
 from ..module import Module
+from ..nearest_neighbors import KMeansIndex
+from ..nearest_neighbors import DistanceMetrics
 from ..utils.errors import CachingError
 from ..utils.memoize import add_to_cache, cached, pop_from_cache
 from ..utils.nearest_neighbors import NNUtil
@@ -107,10 +109,17 @@ class NNVariationalStrategy(UnwhitenedVariationalStrategy):
         self._model_batch_shape: torch.Size = self._variational_distribution.variational_mean.shape[:-1]
         self._batch_shape: torch.Size = torch.broadcast_shapes(self._inducing_batch_shape, self._model_batch_shape)
 
-        self.nn_util: NNUtil = NNUtil(
-            k, dim=self.D, batch_shape=self._inducing_batch_shape, device=inducing_points.device
+
+        #self.nn_util: NNUtil = NNUtil(
+        #    k, dim=self.D, batch_shape=self._inducing_batch_shape, device=inducing_points.device
+        #)
+        #self._compute_nn()
+
+        self.nn_index = KMeansIndex(
+            data=self.inducing_points, n_blocks=len(self.inducing_points),
+            n_neighbors=self.k, distance_metric=DistanceMetrics.euclidean_distance()
         )
-        self._compute_nn()
+        self.nn_xinduce_idx = self.nn_index.neighbors
 
         self.training_batch_size = training_batch_size
         self._set_training_iterator()
@@ -172,9 +181,11 @@ class NNVariationalStrategy(UnwhitenedVariationalStrategy):
 
             else:
                 # find the indices of inducing points that correspond to x
-                x_indices = self.nn_util.find_nn_idx(x.float(), k=1).squeeze(-1)  # (*inducing_batch_shape, batch_size)
+                # x_indices = self.nn_util.find_nn_idx(x.float(), k=1).squeeze(-1)  # (*inducing_batch_shape, batch_size)
 
-                expanded_x_indices = x_indices.expand(*self._batch_shape, x_indices.shape[-1])
+                x_indices = self.nn_index.blocks
+
+                expanded_x_indices = x_indices.expand(*self._batch_shape, x_indices.shape[-1]) # this is not currently quite right
                 expanded_variational_mean = self._variational_distribution.variational_mean.expand(
                     *self._batch_shape, self.M
                 )
@@ -194,7 +205,10 @@ class NNVariationalStrategy(UnwhitenedVariationalStrategy):
             return MultivariateNormal(predictive_mean, DiagLinearOperator(predictive_var))
         else:
 
-            nn_indices = self.nn_util.find_nn_idx(x.float())
+            # nn_indices = self.nn_util.find_nn_idx(x.float())
+
+            self.nn_index.block_new_data(x.float())
+            nn_indices = self.nn_index.test_neighbors
 
             x_batch_shape = x.shape[:-2]
             x_bsz = x.shape[-2]
