@@ -383,9 +383,9 @@ class NNVariationalStrategy(UnwhitenedVariationalStrategy):
         except CachingError:
             raise RuntimeError("KL Divergence of variational strategy was called before nearest neighbors were set.")
 
-    def _compute_nn(self) -> "NNVariationalStrategy":
-        with torch.no_grad():
-            inducing_points_fl = self.inducing_points.data.float()
-            self.nn_util.set_nn_idx(inducing_points_fl)
-            self.nn_xinduce_idx = self.nn_util.build_sequential_nn_idx(inducing_points_fl)
-        return self
+    #def _compute_nn(self) -> "NNVariationalStrategy":
+    #    with torch.no_grad():
+    #        inducing_points_fl = self.inducing_points.data.float()
+    #        self.nn_util.set_nn_idx(inducing_points_fl)
+    #        self.nn_xinduce_idx = self.nn_util.build_sequential_nn_idx(inducing_points_fl)
+    #    return self
