@@ -173,6 +173,7 @@ class TestVNNGP(VariationalTestCase, unittest.TestCase):
         self.assertEqual(output.event_shape, self.event_shape)
         self.assertEqual(loss.shape, expected_batch_shape)
 
+    # FAIL
     def test_training_iteration_batch_inducing(self):
         # We need different batch sizes than the superclass
         return self.test_training_iteration(
@@ -197,6 +198,7 @@ class TestVNNGP(VariationalTestCase, unittest.TestCase):
             expected_batch_shape=(torch.Size([3]) + self.batch_shape),
         )
 
+    # FAIL
     def test_training_all_batch_zero_mean(self):
         # We need different batch sizes than the superclass
         return self.test_training_iteration(
@@ -233,6 +235,7 @@ class TestVNNGP(VariationalTestCase, unittest.TestCase):
         self.assertEqual(output.batch_shape, expected_batch_shape)
         self.assertEqual(output.event_shape, self.event_shape)
 
+    # FAIL
     def test_eval_smaller_pred_batch(self):
         # We need different batch sizes than the superclass
         return self.test_eval_iteration(

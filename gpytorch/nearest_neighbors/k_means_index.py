@@ -50,7 +50,7 @@ class KMeansIndex(BaseIndex):
     def set_blocks(self, data: torch.tensor) -> List[torch.LongTensor]:
         # create and train faiss k-means object
         kmeans = faiss.Kmeans(data.shape[1], self.n_blocks, niter=10)
-        kmeans.train(np.array(data.float()))
+        kmeans.train(data)
 
         # k-means gives centroids directly, so save centroids
         self.centroids = torch.tensor(kmeans.centroids)

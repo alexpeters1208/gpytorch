@@ -109,17 +109,22 @@ class NNVariationalStrategy(UnwhitenedVariationalStrategy):
         self._model_batch_shape: torch.Size = self._variational_distribution.variational_mean.shape[:-1]
         self._batch_shape: torch.Size = torch.broadcast_shapes(self._inducing_batch_shape, self._model_batch_shape)
 
+        #########
+        self.nn_util: NNUtil = NNUtil(
+            k, dim=self.D, batch_shape=self._inducing_batch_shape, device=inducing_points.device
+        )
+        self._compute_nn()
+        #########
 
-        #self.nn_util: NNUtil = NNUtil(
-        #    k, dim=self.D, batch_shape=self._inducing_batch_shape, device=inducing_points.device
-        #)
-        #self._compute_nn()
+        inducing_shape = inducing_points.shape
+        prod = torch.prod(torch.tensor(inducing_shape[:-2]))
+        flattened_inducing_points = self.inducing_points.view(prod * inducing_shape[-2], inducing_shape[-1])
 
         self.nn_index = KMeansIndex(
-            data=self.inducing_points, n_blocks=len(self.inducing_points),
+            data=flattened_inducing_points, n_blocks=len(flattened_inducing_points),
             n_neighbors=self.k, distance_metric=DistanceMetrics.euclidean_distance()
         )
-        self.nn_xinduce_idx = self.nn_index.neighbors
+        self.nn_xinduce_idx_2 = self.nn_index.neighbors
 
         self.training_batch_size = training_batch_size
         self._set_training_iterator()
@@ -180,12 +185,16 @@ class NNVariationalStrategy(UnwhitenedVariationalStrategy):
                 predictive_var = self._variational_distribution._variational_stddev[..., x_indices] ** 2
 
             else:
+                ########
                 # find the indices of inducing points that correspond to x
-                # x_indices = self.nn_util.find_nn_idx(x.float(), k=1).squeeze(-1)  # (*inducing_batch_shape, batch_size)
+                x_indices = self.nn_util.find_nn_idx(x.float(), k=1).squeeze(-1)  # (*inducing_batch_shape, batch_size)
+                ########
 
-                x_indices = self.nn_index.blocks
+                x_indices_2 = torch.stack(self.nn_index.blocks, dim=1).squeeze()
 
                 expanded_x_indices = x_indices.expand(*self._batch_shape, x_indices.shape[-1]) # this is not currently quite right
+                expanded_x_indices_2 = x_indices_2.expand(*self._batch_shape, x_indices.shape[-1])
+
                 expanded_variational_mean = self._variational_distribution.variational_mean.expand(
                     *self._batch_shape, self.M
                 )
@@ -193,8 +202,8 @@ class NNVariationalStrategy(UnwhitenedVariationalStrategy):
                     self._variational_distribution._variational_stddev.expand(*self._batch_shape, self.M) ** 2
                 )
 
-                predictive_mean = expanded_variational_mean.gather(-1, expanded_x_indices)
-                predictive_var = expanded_variational_var.gather(-1, expanded_x_indices)
+                predictive_mean = expanded_variational_mean.gather(-1, expanded_x_indices_2)
+                predictive_var = expanded_variational_var.gather(-1, expanded_x_indices_2)
 
                 # sample a different indices for stochastic estimation of kl
                 kl_indices = self._get_training_indices()
@@ -204,11 +213,12 @@ class NNVariationalStrategy(UnwhitenedVariationalStrategy):
 
             return MultivariateNormal(predictive_mean, DiagLinearOperator(predictive_var))
         else:
-
-            # nn_indices = self.nn_util.find_nn_idx(x.float())
+            ##########
+            nn_indices = self.nn_util.find_nn_idx(x.float())
+            ##########
 
             self.nn_index.block_new_data(x.float())
-            nn_indices = self.nn_index.test_neighbors
+            nn_indices_2 = self.nn_index.test_neighbors
 
             x_batch_shape = x.shape[:-2]
             x_bsz = x.shape[-2]
@@ -383,9 +393,9 @@ class NNVariationalStrategy(UnwhitenedVariationalStrategy):
         except CachingError:
             raise RuntimeError("KL Divergence of variational strategy was called before nearest neighbors were set.")
 
-    #def _compute_nn(self) -> "NNVariationalStrategy":
-    #    with torch.no_grad():
-    #        inducing_points_fl = self.inducing_points.data.float()
-    #        self.nn_util.set_nn_idx(inducing_points_fl)
-    #        self.nn_xinduce_idx = self.nn_util.build_sequential_nn_idx(inducing_points_fl)
-    #    return self
+    def _compute_nn(self) -> "NNVariationalStrategy":
+        with torch.no_grad():
+            inducing_points_fl = self.inducing_points.data.float()
+            self.nn_util.set_nn_idx(inducing_points_fl)
+            self.nn_xinduce_idx = self.nn_util.build_sequential_nn_idx(inducing_points_fl)
+        return self
