@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
 from typing import List
-
-import faiss
-import numpy as np
+import warnings
 import torch
 
 from ._index import BaseIndex
@@ -19,11 +17,29 @@ class KMeansIndex(BaseIndex):
     :param n_neighbors: Number of neighboring clusters per cluster.
     """
 
-    def __init__(self, data: torch.tensor, n_blocks: int, n_neighbors: int, distance_metric):
+    def __init__(self, data: torch.tensor, n_blocks: int, n_neighbors: int, distance_metric, preferred_nnlib="faiss"):
         self.n_blocks = n_blocks
         self.n_neighbors = n_neighbors
         self.distance_metric = distance_metric
         self.centroids = None
+
+        # determine if faiss can be used for KMeans clustering, else use to scikit-learn impl
+        if preferred_nnlib == "faiss":
+            try:
+                import faiss
+                self.nnlib = "faiss"
+
+            except ImportError:
+                warnings.warn(
+                    "Tried to import faiss, but failed. Falling back to scikit-learn nearest neighbor search.",
+                    ImportWarning,
+                )
+                self.nnlib = "sklearn"
+
+        else:
+            self.nnlib = "sklearn"
+
+        #self.to(device)
 
         # this call executes set_blocks and set_neighbors, then superclass computes all dependent quantities
         super(KMeansIndex, self).__init__(set_blocks_kwargs={"data": data}, set_neighbors_kwargs={})
@@ -48,12 +64,24 @@ class KMeansIndex(BaseIndex):
         return blocks
 
     def set_blocks(self, data: torch.tensor) -> List[torch.LongTensor]:
-        # create and train faiss k-means object
-        kmeans = faiss.Kmeans(data.shape[1], self.n_blocks, niter=10)
-        kmeans.train(data)
 
-        # k-means gives centroids directly, so save centroids
-        self.centroids = torch.tensor(kmeans.centroids)
+        # use faiss if available
+        if self.nnlib == "faiss":
+            from faiss import Kmeans
+            kmeans = Kmeans(data.shape[1], self.n_blocks, niter=10)
+            kmeans.train(data)
+
+            # k-means gives centroids directly, so save centroids
+            self.centroids = torch.tensor(kmeans.centroids)
+
+        # otherwise use scikit-learn k-means implementation
+        else:
+            from sklearn.cluster import KMeans
+            kmeans = KMeans(n_clusters=self.n_blocks, n_init=10, max_iter=300)
+            kmeans.fit(data.numpy())  # Convert tensor to numpy array
+
+            # Extract centroids and convert back to tensor
+            self.centroids = torch.tensor(kmeans.cluster_centers_, dtype=torch.float32)
 
         # determine indices of data points that belong to each cluster block and return
         return self._get_cluster_membership(data)
