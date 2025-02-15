@@ -3,15 +3,15 @@
 from .distance_metrics import *
 from .ordering_strategies import *
 
-from ._index import BaseIndex
-from .k_means_index import KMeansIndex
+from .index import BaseIndex, BaseBatchIndex
+from .k_means_index import KMeansIndex, BatchKMeansIndex
 from .voronoi_index import VoronoiIndex
 
 __all__ = [
-    "DistanceMetrics",
-    "OrderingStrategies",
     "BaseIndex",
+    "BaseBatchIndex",
     "KMeansIndex",
+    "BatchKMeansIndex",
     "VoronoiIndex",
 ]
 

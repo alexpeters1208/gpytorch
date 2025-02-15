@@ -2,16 +2,14 @@
 
 import torch
 
+def euclidean_distance(x1, x2):
+    return torch.cdist(x1, x2, p=2).float()
 
-class DistanceMetrics:
-    @staticmethod
-    def euclidean_distance():
-        return lambda x1, x2: torch.cdist(x1, x2, p=2).float()
+def euclidean_distance_2():
+    return lambda x1, x2: torch.cdist(x1, x2, p=2).float()
 
-    @staticmethod
-    def manhattan_distance():
-        return lambda x1, x2: torch.cdist(x1, x2, p=1).float()
+def manhattan_distance():
+    return lambda x1, x2: torch.cdist(x1, x2, p=1).float()
 
-    @staticmethod
-    def mst_distance():
-        raise NotImplementedError
+def mst_distance():
+    raise NotImplementedError

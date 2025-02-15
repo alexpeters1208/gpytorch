@@ -50,7 +50,7 @@ class TestBaseIndex(object):
             with self.subTest(test_name):
 
                 # correct number of overall neighboring sets (should be equal to number of blocks, 1 set per block)
-                self.assertEqual(len(test_input._exclusive_neighboring_observations), expected["n_blocks"])
+                self.assertEqual(len(test_input._exclusive_neighbor_observations), expected["n_blocks"])
 
                 # correct number of neighbors per block
                 correct_num_neighbors = torch.cat(
@@ -64,7 +64,7 @@ class TestBaseIndex(object):
                 self.assertTrue(
                     all(
                         [
-                            len(test_input._neighboring_blocks[i]) == correct_num_neighbors[i]
+                            len(test_input._neighbor_blocks[i]) == correct_num_neighbors[i]
                             for i in range(expected["n_blocks"])
                         ]
                     )
@@ -75,7 +75,7 @@ class TestBaseIndex(object):
                     all(
                         [
                             len(neighbor.unique()) == len(neighbor)
-                            for neighbor in test_input._exclusive_neighboring_observations
+                            for neighbor in test_input._exclusive_neighbor_observations
                         ]
                     )
                 )
@@ -83,22 +83,22 @@ class TestBaseIndex(object):
                 # first neighboring set is empty, all others are empty if n_neighbors == 0
                 if expected["n_neighbors"] == 0:
                     self.assertTrue(
-                        all([len(neighbor) == 0 for neighbor in test_input._exclusive_neighboring_observations])
+                        all([len(neighbor) == 0 for neighbor in test_input._exclusive_neighbor_observations])
                     )
                 else:
-                    self.assertTrue(len(test_input._exclusive_neighboring_observations[0]) == 0)
+                    self.assertTrue(len(test_input._exclusive_neighbor_observations[0]) == 0)
 
                 # exclusive neighboring sets are identical to concatenated neighboring blocks
                 if expected["n_neighbors"] != 0:
                     reconstructed_sorted_neighboring_sets = [
                         torch.sort(torch.cat([test_input._block_observations[block] for block in neighboring_set]))[0]
-                        for neighboring_set in test_input._neighboring_blocks[1:]
+                        for neighboring_set in test_input._neighbor_blocks[1:]
                     ]
                     self.assertTrue(
                         all(
                             [
                                 torch.equal(
-                                    torch.sort(test_input._exclusive_neighboring_observations[i])[0].long(),
+                                    torch.sort(test_input._exclusive_neighbor_observations[i])[0].long(),
                                     reconstructed_sorted_neighboring_sets[i - 1],
                                 )
                                 for i in range(1, expected["n_blocks"])
@@ -107,14 +107,14 @@ class TestBaseIndex(object):
                     )
 
                 # correct overall number of inclusive neighboring sets
-                self.assertEqual(len(test_input._inclusive_neighboring_observations), expected["n_blocks"])
+                self.assertEqual(len(test_input._inclusive_neighbor_observations), expected["n_blocks"])
 
-                # assert blocks._inclusive_neighboring_observations elements are unique
+                # assert blocks._inclusive_neighbor_observations elements are unique
                 self.assertTrue(
                     all(
                         [
                             len(neighbor.unique()) == len(neighbor)
-                            for neighbor in test_input._inclusive_neighboring_observations
+                            for neighbor in test_input._inclusive_neighbor_observations
                         ]
                     )
                 )
@@ -129,13 +129,13 @@ class TestBaseIndex(object):
                             )
                         )
                     )[0]
-                    for neighboring_set, i in zip(test_input._neighboring_blocks, range(expected["n_blocks"]))
+                    for neighboring_set, i in zip(test_input._neighbor_blocks, range(expected["n_blocks"]))
                 ]
                 self.assertTrue(
                     all(
                         [
                             torch.equal(
-                                torch.sort(test_input._inclusive_neighboring_observations[i])[0].long(),
+                                torch.sort(test_input._inclusive_neighbor_observations[i])[0].long(),
                                 reconstructed_sorted_neighboring_sets[i],
                             )
                             for i in range(expected["n_blocks"])

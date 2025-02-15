@@ -13,7 +13,7 @@ from ..distributions import MultivariateNormal
 from ..models import ApproximateGP, ExactGP
 from ..module import Module
 from ..nearest_neighbors import KMeansIndex
-from ..nearest_neighbors import DistanceMetrics
+#from ..nearest_neighbors import DistanceMetrics
 from ..utils.errors import CachingError
 from ..utils.memoize import add_to_cache, cached, pop_from_cache
 from ..utils.nearest_neighbors import NNUtil
@@ -116,15 +116,16 @@ class NNVariationalStrategy(UnwhitenedVariationalStrategy):
         self._compute_nn()
         #########
 
-        self.nn_index = KMeansIndex(
-            data=self.inducing_points, n_blocks=len(inducing_points),
-            n_neighbors=self.k, distance_metric=DistanceMetrics.euclidean_distance()
-        )
+        #self.nn_index = KMeansIndex(
+        #    data=self.inducing_points, n_blocks=len(inducing_points),
+        #    n_neighbors=self.k, distance_metric=DistanceMetrics.euclidean_distance()
+        #)
 
         # My implementation returns a list to account for blocks of various sizes. In this case, block size is 1,
         # so torch.stack() can be used to produce a tensor. My implementation also computes the neighbors of the first
         # k observations, while nn_utils seems to leave those out. So, I leave off the first k observations.
         self.nn_xinduce_idx = torch.stack(self.nn_index.neighbors[self.k:])
+        # at this step, this value is exactly equal to the self.nn_xinduce_idx set by self.nn_util.build_sequential_nn_idx(inducing_points_fl) in self._compute_nn
 
         self.training_batch_size = training_batch_size if training_batch_size is not None else self.M
         self._set_training_iterator()

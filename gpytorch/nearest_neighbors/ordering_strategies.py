@@ -2,20 +2,14 @@
 
 import torch
 
+def coordinate_ordering(coordinate: int):
+    return lambda data: torch.argsort(data[:, coordinate]).long()
 
-class OrderingStrategies:
-    @staticmethod
-    def coordinate_ordering(coordinate: int):
-        return lambda data: torch.argsort(data[:, coordinate]).long()
+def norm_ordering(p: float, dim: int):
+    return lambda data: torch.argsort(torch.linalg.norm(data, ord=p, dim=dim)).long()
 
-    @staticmethod
-    def norm_ordering(p: float, dim: int):
-        return lambda data: torch.argsort(torch.linalg.norm(data, ord=p, dim=dim)).long()
+def mst_ordering():
+    raise NotImplementedError
 
-    @staticmethod
-    def mst_ordering():
-        raise NotImplementedError
-
-    @staticmethod
-    def minmax_ordering():
-        raise NotImplementedError
+def minmax_ordering():
+    raise NotImplementedError

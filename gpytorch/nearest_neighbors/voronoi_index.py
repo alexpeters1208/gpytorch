@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from scipy.spatial import Voronoi as scipyVoronoi
 
-from ._index import BaseIndex
+from .index import BaseIndex
 
 
 def voronoi_finite_polygons_2d(vor: scipyVoronoi, radius: float = None) -> (List[torch.tensor], torch.tensor):
